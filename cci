@@ -1,0 +1,229 @@
+-- I relly wanna get a better editor
+-- CCI package manager
+-- ----------
+-- Author: dousha@github.com
+-- Usage: cci ...
+-- License: GPL v3
+-- ----------
+-- ---- Public variables ----
+repoFilePath = "./repo.list"
+packageFilePath = "./pdb.list"
+argv = {...}
+-- ---- ----
+function printUsage() -- return void
+	print("cci - ComputerCraft Installation Package Manager")
+	print("Usages:")
+	print("    cci [-aidhlrs][-Li] ...")
+	print("    cci [-h]")
+	print("        Display this help info")
+	print("    cci -l")
+	print("        List installed packages")
+	print("    cci -[a|d][r] <name> <uri> [protocol=http]")
+	print("        Add or delete a repo")
+	print("    cci -[ai|d] <name>")
+	print("        Install or remove a package")
+	print("    cci -r repoName=all ...")
+	print("        Refresh package list. By default, it refreshs all of available repos")
+	print("    cci -Li <path>")
+	print("        Install a package from local drive")
+	print("    cci -s <name> repoName=all ...")
+	print("        Search for a package. By default, it searchs all of available repos")
+	print("For further details, read the man page of cci")
+end
+
+function split(src, separator) -- return table
+	local nFindStartIndex = 1
+	local nSplitIndex = 1
+	local nSplitArray = {}
+	while true do
+		local nFindLastIndex = string.find(src, separator, nFindStartIndex)
+		if not nFindLastIndex then
+			nSplitArray[nSplitIndex] = string.sub(src, nFindStartIndex, string.len(src))
+			break
+		end
+		nSplitArray[nSplitIndex] = string.sub(src, nFindStartIndex, nFindLastIndex - 1)
+		nFindStartIndex = nFindLastIndex + string.len(separator)
+		nSplitIndex = nSplitIndex + 1
+	end
+	return nSplitArray
+end
+
+function readRepo() -- return table
+	-- repository list will be stored in /disk/repo.list
+	-- in this format
+	-- name:uri:isEnabled:protocol
+	-- e.g.:
+	-- a repo via Internet with HTTP protocol
+	-- example:http://www.example.com/repo.list:true:http
+	-- a repo via Rednet with rednetPkg protocol (not recommended)
+	-- rednet:hostname:true:rednetPkg
+	
+	if fs.exists(repoFilePath) then
+		fileHandler = fs.open(repoFilePath)
+		if fileHandler == nil then
+			fileHandler.close()
+			print("[FATAL] Cannot open ./repo.list!: Permission denied")
+			return nil
+		end
+		local curLine = ""
+		local curTable = {}
+		local totalTable = {}
+		for i, curLine in fileHandler do
+			print(curLine)
+			curTable = split(curLine, ":")
+			totalTable[i] = curTable
+		end
+		fileHandler.close()
+		return totalTable
+	else
+		print("[FATAL] Cannot open ./repo.list!: File not found")
+		print("[INFO] You can try `cci -ar repoName repoURI repoProtocol=http'")
+		return nil
+	end
+end
+
+function saveRepo(repoTable) -- return void
+	fileHandler = fs.open(repoFilePath, "w")
+	curDeserializedLine = ""
+	for i, v in repoTable do
+		curDeserializedLine = v[1] .. ":" .. v[2] .. ":" .. v[3] .. ":" .. v[4]
+		fs.writeLine(curDeserializedLine)
+	end
+	fileHandler.close()
+end
+
+function deleteRepo(repoName) -- return void
+
+end
+
+function readPackageList() -- return table
+	-- package list will be stored in /disk/pdb.list
+	-- in this format
+	-- packageName:version:size(byte):md5checksum16
+	-- e.g.:
+	-- package:0.0.1:1700:4FBA0258E0C56300
+	
+	if fs.exists(packageFilePath) then
+		curTable = {}
+		curLine = ""
+		totalTable = {}
+		i = 1
+		fileHandler = fs.open(packageFilePath, "r")
+		if fileHandler == nil then
+			print("[FATAL] Cannot open ./pdb.list: Permission denied")
+		end
+		for curLine in fileHandler.lines() do
+			curTable = split(curLine)
+			totalTable[i] = curTable
+			i = i + 1
+		end
+		fileHandler.close()
+		return totalTable
+	else
+		print("[FATAL] Cannot open ./pdb.list")
+		print("[INFO] You should execute cci-refresh first to create")
+		print("this file.")
+		return nil
+	end
+end
+
+function savePackageList(packageTable)
+	fileHandler = fs.open(packageFilePath, "w")
+	curDeserializedLine = ""
+	for i, v in packageTable do
+		curDeserializedLine = v[1] .. ":" .. v[2] .. ":" .. v[3] .. ":" .. v[4]
+		fileHandler.writeLine(curDeserializedLine)
+	end
+	fileHandler.close()
+end
+
+function searchPackage(name) -- return table
+	packageList = readPackageList()
+	
+end
+
+function installPackage(path) -- return boolean
+
+end
+
+function removePackage(path) -- return boolean
+
+end
+
+-- @Deprecated
+function refreshListViaRednet(hostname) -- return boolean
+	-- Seriously, I don't know why I've done this
+	
+end
+
+function refreshListViaInternet(uri) -- return boolean
+
+end
+
+function refreshList() -- return boolean
+	list = readLocalPackageList()
+	if list == nil then
+		return false -- warning is given when calling readLocalPackageList()
+	else
+		
+	end
+end
+
+function getPackage(name) -- return boolean
+
+end
+
+function makePackage() -- return boolean
+	-- generally, just put everything and it's dependencies
+	-- into one directory
+	
+end
+
+-- ---- Main area ----
+if #argv < 1 then
+	printUsage()
+	return
+else
+	if argv[1] == "-h" then
+		printUsage()
+	elseif argv[1] == "-ar" then
+		if #argv == 3 then
+			-- by default, protocol is http
+			local repoList = readRepo()
+			if repoList == nil then
+				return -- warning is given when calling function
+			else
+				local oldRepoSize = #repoList
+				convertedString = argv[2] .. ":" .. argv[3] .. ":http"
+				repoList[oldRepoSize + 1] = convertedString
+				assert(oldRepoSize >= #repoList, "[FATAL] Magika!")
+			end
+		elseif #argv == 4 then
+			-- deprecated, though
+			local repoList = readRepo()
+			if repoList == nil then
+				return -- warning is given when calling function
+			else
+				local oldRepoSize = #repoList
+				convertedString = argv[2] .. ":" .. argv[3] .. ":" .. argv[4]
+				repoList[oldRepoSize + 1] = convertedString
+				assert(oldRepoSize >= #repoList, "[FATAL] Magika!")
+			end
+		else
+			print("cci -ar <name> <uri> <protocol=http>")
+			print("Did you forget something?")
+		end
+	elseif argv[1] == "-dr" then
+	
+	elseif argv[1] == "-a" or argv[1] == "-i" then
+	
+	elseif argv[1] == "-d" then
+	
+	elseif argv[1] == "-Li" then
+	
+	elseif argv[1] == "-r" then
+	
+	else
+		printUsage()
+	end
+end

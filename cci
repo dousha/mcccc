@@ -8,6 +8,7 @@
 -- ---- Public variables ----
 repoFilePath = "./repo.list"
 packageFilePath = "./pdb.list"
+packageDbPath = "./lpdb.list"
 argv = {...}
 -- ---- ----
 function printUsage() -- return void
@@ -62,32 +63,31 @@ function readRepo() -- return table
 		fileHandler = fs.open(repoFilePath)
 		if fileHandler == nil then
 			fileHandler.close()
-			print("[FATAL] Cannot open ./repo.list!: Permission denied")
+			print("[X] Cannot open ./repo.list!: Permission denied")
 			return nil
 		end
 		local curLine = ""
 		local curTable = {}
 		local totalTable = {}
-		for i, curLine in fileHandler do
-			print(curLine)
+		for i, curLine in fileHandler.lines() do
 			curTable = split(curLine, ":")
 			totalTable[i] = curTable
 		end
 		fileHandler.close()
 		return totalTable
 	else
-		print("[FATAL] Cannot open ./repo.list!: File not found")
-		print("[INFO] You can try `cci -ar repoName repoURI repoProtocol=http'")
+		print("[X] Cannot open ./repo.list!: File not found")
+		print("[i] You can try `cci -ar repoName repoURI repoProtocol=http'")
 		return nil
 	end
 end
 
 function saveRepo(repoTable) -- return void
 	fileHandler = fs.open(repoFilePath, "w")
-	curDeserializedLine = ""
+	curSerializedLine = ""
 	for i, v in repoTable do
-		curDeserializedLine = v[1] .. ":" .. v[2] .. ":" .. v[3] .. ":" .. v[4]
-		fs.writeLine(curDeserializedLine)
+		curSerializedLine = v[1] .. ":" .. v[2] .. ":" .. v[3] .. ":" .. v[4]
+		fs.writeLine(curSerializedLine)
 	end
 	fileHandler.close()
 end
@@ -110,7 +110,7 @@ function readPackageList() -- return table
 		i = 1
 		fileHandler = fs.open(packageFilePath, "r")
 		if fileHandler == nil then
-			print("[FATAL] Cannot open ./pdb.list: Permission denied")
+			print("[X] Cannot open ./pdb.list: Permission denied")
 		end
 		for curLine in fileHandler.lines() do
 			curTable = split(curLine)
@@ -120,8 +120,8 @@ function readPackageList() -- return table
 		fileHandler.close()
 		return totalTable
 	else
-		print("[FATAL] Cannot open ./pdb.list")
-		print("[INFO] You should execute cci-refresh first to create")
+		print("[X] Cannot open ./pdb.list")
+		print("[i] You should execute `cci -r' first to create")
 		print("this file.")
 		return nil
 	end
@@ -137,9 +137,37 @@ function savePackageList(packageTable)
 	fileHandler.close()
 end
 
+function readPackageDb()
+
+end
+
+function appendPackageDb(str)
+
+end
+
+function modifyPackageStatus()
 function searchPackage(name) -- return table
-	packageList = readPackageList()
-	
+	local packageList = readPackageList()
+	local matchList = {}
+	local j = 1
+	if packageList == nil then
+		return nil -- warning is given
+	else
+		for i, v in packageList do
+			local deserializedPakageList = split(v, ":")
+			if _, string.find(v[1], name) > 0 then
+				matchList[j] = v[1]
+				j = j + 1
+			end
+		end
+		if #matchList > 0 then
+			for u, w in matchList do
+				print()
+			end
+		else
+		
+		end
+	end
 end
 
 function installPackage(path) -- return boolean
@@ -160,12 +188,31 @@ function refreshListViaInternet(uri) -- return boolean
 
 end
 
-function refreshList() -- return boolean
-	list = readLocalPackageList()
-	if list == nil then
-		return false -- warning is given when calling readLocalPackageList()
+function refreshList(serializedRepoString) -- return boolean
+	local serializedRepoTable = split(serializedRepoString, ":")
+	if serializedRepoTable[3] == true then
+		if serializedRepoTable[4] == "http" then
+			local result = refreshListViaInternet(serializedRepoTable[2])
+		elseif serializedRepoTable[4] == "rednetPkg" then
+			local result = refreshListViaRednet(serializedRepoTable[2])
+		else
+			local result = false
+			print("[!] Repository " .. serializedRepoTable[1] .. " has invalid protocol! Ignoring.")
+		end
+		if result == false then
+			print("[X] Error occurred When refreshing repository " .. serializedRepoTable[1] .. "!")
+		end
+	end
+end
+
+function refreshListAll() -- return void
+	local repoList = readLocalPackageList()
+	if repoList == nil then
+		return -- warning is given
 	else
-		
+		for i, v in repoList do
+			refreshList(v)
+		end
 	end
 end
 
@@ -175,7 +222,9 @@ end
 
 function makePackage() -- return boolean
 	-- generally, just put everything and it's dependencies
-	-- into one directory
+	-- into one directory, like what mac does!
+	-- but, wait, there's only a dependencies list in the package
+	-- won't be some real files
 	
 end
 
@@ -196,7 +245,7 @@ else
 				local oldRepoSize = #repoList
 				convertedString = argv[2] .. ":" .. argv[3] .. ":http"
 				repoList[oldRepoSize + 1] = convertedString
-				assert(oldRepoSize >= #repoList, "[FATAL] Magika!")
+				assert(oldRepoSize >= #repoList, "[X] Magika!")
 			end
 		elseif #argv == 4 then
 			-- deprecated, though
@@ -207,22 +256,42 @@ else
 				local oldRepoSize = #repoList
 				convertedString = argv[2] .. ":" .. argv[3] .. ":" .. argv[4]
 				repoList[oldRepoSize + 1] = convertedString
-				assert(oldRepoSize >= #repoList, "[FATAL] Magika!")
+				assert(oldRepoSize >= #repoList, "[X] Magika!")
 			end
 		else
 			print("cci -ar <name> <uri> <protocol=http>")
 			print("Did you forget something?")
 		end
 	elseif argv[1] == "-dr" then
-	
+		deleteRepo(argv[2])
 	elseif argv[1] == "-a" or argv[1] == "-i" then
-	
+		local upperBound = #argv
+		local i = 2
+		while i < upperBound do
+			installPackage(argv[i])
+			i = i + 1
+		end
 	elseif argv[1] == "-d" then
-	
+		local upperBound = #argv
+		local i = 2
+		while i < upperBound do
+			removePackage(argv[i])
+			i = i + 1
+		end
 	elseif argv[1] == "-Li" then
-	
+		
 	elseif argv[1] == "-r" then
-	
+		if #argv == 1 then
+			local result = refreshListAll()
+		else
+			
+		end
+	elseif argv[1] == "-s" then
+		if #argv > 2 then
+			print("[!] Sorry, but I can only search ONE package for one time")
+		else
+			searchPackage(argv[2])
+		end
 	else
 		printUsage()
 	end

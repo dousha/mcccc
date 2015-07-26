@@ -5,12 +5,14 @@
 -- Usage: cci ...
 -- License: GPL v3
 -- ----------
+
 -- ---- Public variables ----
 repoFilePath = "./repo.list"
 packageFilePath = "./pdb.list"
 packageDbPath = "./lpdb.list"
 argv = {...}
 -- ---- ----
+
 function printUsage() -- return void
 	print("cci - ComputerCraft Installation Package Manager")
 	print("Usages:")
@@ -47,6 +49,14 @@ function split(src, separator) -- return table
 		nSplitIndex = nSplitIndex + 1
 	end
 	return nSplitArray
+end
+
+function serializeRepoString(name, addr, isEnabled, protocol) -- return string
+	return (name .. ":" .. addr .. ":" .. isEnabled .. ":" .. protocol)
+end
+
+function serializeRepoStringT(T) -- return string
+	return serializeRepoString(T[1], T[2], T[3], T[4])
 end
 
 function readRepo() -- return table
@@ -86,14 +96,28 @@ function saveRepo(repoTable) -- return void
 	fileHandler = fs.open(repoFilePath, "w")
 	curSerializedLine = ""
 	for i, v in repoTable do
-		curSerializedLine = v[1] .. ":" .. v[2] .. ":" .. v[3] .. ":" .. v[4]
+		curSerializedLine = serializeRepoStringT(v)
 		fs.writeLine(curSerializedLine)
 	end
 	fileHandler.close()
 end
 
 function deleteRepo(repoName) -- return void
+	fileHandler = fs.open(repoFilePath, "w")
+	curSerializedLine = ""
+	for i, v in fileHandler.lines() do
+		if v[1] ~= repoName then
+			
+		end
+	end
+end
 
+function serializePackageString(name, version, size, hash) -- return string
+	return (name .. ":" .. version .. ":" .. size .. ":" hash)
+end
+
+function serializePackageStringT(T) -- return string
+	return serializePackageString(T[1], T[2], T[3], T[4])
 end
 
 function readPackageList() -- return table
@@ -131,8 +155,8 @@ function savePackageList(packageTable)
 	fileHandler = fs.open(packageFilePath, "w")
 	curDeserializedLine = ""
 	for i, v in packageTable do
-		curDeserializedLine = v[1] .. ":" .. v[2] .. ":" .. v[3] .. ":" .. v[4]
-		fileHandler.writeLine(curDeserializedLine)
+		curSerializedLine = serializePackageStringT(v)
+		fileHandler.writeLine(curSerializedLine)
 	end
 	fileHandler.close()
 end
@@ -146,6 +170,9 @@ function appendPackageDb(str)
 end
 
 function modifyPackageStatus()
+
+end
+
 function searchPackage(name) -- return table
 	local packageList = readPackageList()
 	local matchList = {}
